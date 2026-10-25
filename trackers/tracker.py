@@ -1,18 +1,16 @@
 from ultralytics import YOLO
 import supervision as sv
-import pickle
-import os
 import numpy as np
 import pandas as pd
 import cv2
 import sys 
 sys.path.append('../')
-from utils import get_center_of_bbox, get_bbox_width, get_foot_position
+from utils import get_center_of_bbox, get_bbox_width, get_foot_position, read_stub, save_stub
 
 class Tracker:
-    def __init__(self, model_path):
+    def __init__(self, model_path, frame_rate=24):
         self.model = YOLO(model_path) 
-        self.tracker = sv.ByteTrack()
+        self.tracker = sv.ByteTrack(frame_rate=int(round(frame_rate)))
 
     def add_position_to_tracks(sekf,tracks):
         for object, object_tracks in tracks.items():
@@ -47,10 +45,10 @@ class Tracker:
 
     def get_object_tracks(self, frames, read_from_stub=False, stub_path=None):
         
-        if read_from_stub and stub_path is not None and os.path.exists(stub_path):
-            with open(stub_path,'rb') as f:
-                tracks = pickle.load(f)
-            return tracks
+        if read_from_stub:
+            tracks = read_stub(stub_path, frames)
+            if tracks is not None:
+                return tracks
 
         detections = self.detect_frames(frames)
 
@@ -90,16 +88,13 @@ class Tracker:
                 if cls_id == cls_names_inv['referee']:
                     tracks["referees"][frame_num][track_id] = {"bbox":bbox}
             
-            for frame_detection in detection_supervision:
-                bbox = frame_detection[0].tolist()
-                cls_id = frame_detection[3]
+            # Keep only the most confident ball detection
+            ball_detections = detection_supervision[detection_supervision.class_id == cls_names_inv['ball']]
+            if len(ball_detections) > 0:
+                best_ball = int(np.argmax(ball_detections.confidence))
+                tracks["ball"][frame_num][1] = {"bbox":ball_detections.xyxy[best_ball].tolist()}
 
-                if cls_id == cls_names_inv['ball']:
-                    tracks["ball"][frame_num][1] = {"bbox":bbox}
-
-        if stub_path is not None:
-            with open(stub_path,'wb') as f:
-                pickle.dump(tracks,f)
+        save_stub(stub_path, frames, tracks)
 
         return tracks
     
@@ -175,8 +170,9 @@ class Tracker:
         # Get the number of time each team had ball control
         team_1_num_frames = team_ball_control_till_frame[team_ball_control_till_frame==1].shape[0]
         team_2_num_frames = team_ball_control_till_frame[team_ball_control_till_frame==2].shape[0]
-        team_1 = team_1_num_frames/(team_1_num_frames+team_2_num_frames)
-        team_2 = team_2_num_frames/(team_1_num_frames+team_2_num_frames)
+        total_frames = max(team_1_num_frames+team_2_num_frames, 1)
+        team_1 = team_1_num_frames/total_frames
+        team_2 = team_2_num_frames/total_frames
 
         cv2.putText(frame, f"Team 1 Ball Control: {team_1*100:.2f}%",(1400,900), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,0), 3)
         cv2.putText(frame, f"Team 2 Ball Control: {team_2*100:.2f}%",(1400,950), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,0), 3)
@@ -184,7 +180,6 @@ class Tracker:
         return frame
 
     def draw_annotations(self,video_frames, tracks,team_ball_control):
-        output_video_frames= []
         for frame_num, frame in enumerate(video_frames):
             frame = frame.copy()
 
@@ -212,6 +207,4 @@ class Tracker:
             # Draw Team Ball Control
             frame = self.draw_team_ball_control(frame, frame_num, team_ball_control)
 
-            output_video_frames.append(frame)
-
-        return output_video_frames
+            yield frame

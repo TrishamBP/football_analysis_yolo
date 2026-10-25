@@ -1,193 +1,218 @@
-# Football Video Intelligence Pipeline: Tracking, Team Assignment, and Motion Analytics
+<div align="center">
 
-## 1. Overview
-This project is a computer-vision pipeline for football match analysis that transforms raw broadcast video into structured, frame-level analytics. It detects players, referees, and the ball; tracks entities across frames; compensates for camera motion; maps motion to a field-relative coordinate system; estimates player speed and distance; assigns teams by jersey color clustering; and estimates ball possession over time.
+# ⚽ Football Video Intelligence
 
-From an engineering perspective, the system solves a core sports analytics problem: converting noisy visual streams into stable, quantitative signals that can support tactical analysis, performance monitoring, and downstream AI/ML workflows.
+**Broadcast footage in, tactical analytics out.**
+Detection · Tracking · Team assignment · Camera-motion compensation · Speed & distance · Ball possession
 
-Why this matters:
-- Broadcast video is abundant, but raw pixels are not directly actionable.
-- Reliable tracking + geometric normalization is the bridge from video to analytics.
-- This pipeline demonstrates end-to-end systems thinking: perception, tracking, transformation, feature computation, and annotated output generation.
+<p>
+  <img src="https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.12">
+  <img src="https://img.shields.io/badge/uv-package%20manager-DE5FE9?style=for-the-badge&logo=uv&logoColor=white" alt="uv">
+  <img src="https://img.shields.io/badge/PyTorch-CUDA-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white" alt="PyTorch">
+  <img src="https://img.shields.io/badge/Ultralytics-YOLOv8-111F68?style=for-the-badge&logo=ultralytics&logoColor=white" alt="Ultralytics YOLOv8">
+</p>
+<p>
+  <img src="https://img.shields.io/badge/OpenCV-5-5C3EE8?style=for-the-badge&logo=opencv&logoColor=white" alt="OpenCV">
+  <img src="https://img.shields.io/badge/Supervision-ByteTrack-8315F9?style=for-the-badge&logo=roboflow&logoColor=white" alt="Supervision ByteTrack">
+  <img src="https://img.shields.io/badge/NumPy-013243?style=for-the-badge&logo=numpy&logoColor=white" alt="NumPy">
+  <img src="https://img.shields.io/badge/pandas-150458?style=for-the-badge&logo=pandas&logoColor=white" alt="pandas">
+  <img src="https://img.shields.io/badge/scikit--learn-F7931E?style=for-the-badge&logo=scikitlearn&logoColor=white" alt="scikit-learn">
+  <img src="https://img.shields.io/badge/NVIDIA-CUDA%2013-76B900?style=for-the-badge&logo=nvidia&logoColor=white" alt="NVIDIA CUDA">
+</p>
 
-## 2. Features
-- YOLO-based detection for players, referees, and ball.
-- Multi-object tracking with ByteTrack for temporal identity consistency.
-- Ball trajectory interpolation to fill missing detections.
-- Camera motion estimation using sparse optical flow (Lucas-Kanade).
-- Motion-compensated position adjustment per frame.
-- Perspective transform from image plane to field-relative coordinates.
-- Team assignment via KMeans clustering on player jersey colors.
-- Ball possession attribution using nearest-player heuristic.
-- Per-player speed (`km/h`) and cumulative distance (`m`) estimation.
-- Rendered annotated output video with overlays for tracks, possession, camera movement, speed, and distance.
-- Stub-based caching for faster iteration during development.
+<img src="image.png" alt="Annotated output frame" width="90%">
 
-## 3. Tech Stack
-- Python
-- OpenCV (`cv2`) for video I/O, optical flow, geometry transforms, and rendering
-- Ultralytics YOLO for object detection
-- Supervision (ByteTrack integration) for tracking
-- NumPy for vectorized numerical operations
-- Pandas for interpolation of ball trajectories
-- scikit-learn (`KMeans`) for unsupervised team color clustering
-- Pickle for serialized stub caching
+<sub>Annotated output: team-coloured player markers with track IDs, referee and ball markers, possession bar, camera movement, live speed & distance.</sub>
 
-## 4. Architecture / Workflow
+</div>
+
+---
+
+## 📖 Overview
+
+A computer-vision pipeline that turns raw broadcast football video into structured, frame-level analytics. It detects players, referees and the ball, tracks them across frames, compensates for camera motion, maps positions into field coordinates, estimates per-player speed and distance, assigns teams by jersey colour, and attributes ball possession over time.
+
+> [!NOTE]
+> Broadcast video is abundant, but raw pixels aren't actionable. Reliable tracking plus geometric normalisation bridges the gap between **video** and **analytics**: perception → tracking → transformation → features → rendered output.
+
+## ✨ Features
+
+| | Capability | How |
+|---|---|---|
+| 🎯 | **Detection** of players, goalkeepers, referees, ball | Ultralytics YOLOv8x @ 1280 px, batched GPU inference |
+| 🔗 | **Multi-object tracking** with stable IDs | ByteTrack (Supervision), tuned to the video's frame rate |
+| 🏀 | **Ball trajectory interpolation** | Most-confident ball per frame, gaps filled with pandas |
+| 🎥 | **Camera motion estimation** | Sparse Lucas-Kanade optical flow |
+| 🗺️ | **Perspective transform** | Homography from image plane to pitch metres |
+| 👕 | **Team assignment** | KMeans clustering on jersey colours |
+| 🤝 | **Ball possession** | Nearest-foot heuristic with distance threshold |
+| ⚡ | **Speed & distance** | Per-player km/h and cumulative metres |
+| 💾 | **Smart caching** | Stubs fingerprinted to the source video; stale caches are rebuilt automatically |
+| 🪶 | **Low memory footprint** | Frames decoded lazily and streamed to the writer, not held in RAM |
+
+## 🏗️ Architecture
+
 ```mermaid
-graph TD
-A[Input Video: data/test.mp4] --> B[Object Detection: YOLO]
-B --> C[Tracking: ByteTrack]
-C --> D[Entity Tracks: players referees ball]
-D --> E[Position Extraction]
-E --> F[Camera Motion Estimation]
-F --> G[Motion Compensation]
-G --> H[Perspective Transform to Field Coordinates]
-H --> I[Speed and Distance Estimation]
-D --> J[Ball Interpolation]
-D --> K[Team Assignment by Jersey Color]
-D --> L[Ball-to-Player Assignment]
-I --> M[Frame Annotation]
-J --> M
-K --> M
-L --> M
-F --> M
-M --> N[Output Video: output_videos/output_video.avi]
+flowchart LR
+    A[🎬 Input video] --> B[🎯 YOLOv8 detection]
+    B --> C[🔗 ByteTrack tracking]
+    C --> D[(Tracks:<br/>players · referees · ball)]
+    D --> E[📍 Positions]
+    E --> F[🎥 Camera motion<br/>compensation]
+    F --> G[🗺️ Perspective<br/>transform]
+    G --> H[⚡ Speed & distance]
+    D --> I[🏀 Ball interpolation]
+    D --> J[👕 Team assignment]
+    I --> K[🤝 Possession]
+    J --> K
+    H --> L[🖌️ Frame annotation]
+    K --> L
+    F --> L
+    L --> M[📼 Output video]
 ```
 
-## 5. Project Structure
+## 🚀 Quick start
+
+> [!TIP]
+> This project uses [**uv**](https://docs.astral.sh/uv/). It installs Python 3.12, creates `.venv` and installs the locked dependencies in one step. On Windows/Linux it pulls the **CUDA 13.0** PyTorch build, so detection runs on an NVIDIA GPU when one is available.
+
+```bash
+# 1. Clone and install
+git clone https://github.com/TrishamBP/football_analysis_yolo.git
+cd football_analysis_yolo
+uv sync
+
+# 2. Fetch model weights + a sample DFL Bundesliga clip
+uvx gdown -O models/best.pt "https://drive.google.com/uc?id=17PXFNlx-jI7VjVo_vQnB1sONjRyvoB-q"
+uvx gdown -O data/test.mp4  "https://drive.google.com/uc?id=1OG8K6wqUw9t7lp9ms1M48DxRhwTYciK-"
+
+# 3. Run the pipeline
+uv run main.py
+```
+
+The annotated video is written to **`output_videos/output_video.avi`**.
+
+<details>
+<summary><b>📦 About the assets</b></summary>
+
+<br>
+
+| Asset | Path | Source |
+|---|---|---|
+| Model weights | `models/best.pt` | YOLOv8x trained on ball / goalkeeper / player / referee, from [Roboflow sports](https://github.com/roboflow/sports) |
+| Input video | `data/test.mp4` | Clip from the [DFL Bundesliga Data Shootout](https://www.kaggle.com/competitions/dfl-bundesliga-data-shootout) dataset |
+
+Both are git-ignored (the weights are ~137 MB). Any model with the same four class names and any broadcast-angle clip will work.
+
+</details>
+
+<details>
+<summary><b>🧰 Other commands</b></summary>
+
+<br>
+
+```bash
+uv run yolo_inference.py   # quick YOLO-only sanity check
+uv add <package>           # add a dependency
+```
+
+Detection/tracking and camera-motion results are cached in `stubs/<video>_*.pkl`. Each stub stores a fingerprint of its source video (frame count + first-frame hash); if you swap the input video, stale stubs are ignored and recomputed.
+
+</details>
+
+## 📁 Project structure
+
 ```text
 football_analysis_yolo/
-+-- main.py                                 # End-to-end pipeline orchestrator
-+-- yolo_inference.py                       # Standalone YOLO inference test script
-+-- image.png                               # Sample output snapshot
-+-- trackers/
-�   +-- tracker.py                          # Detection, ByteTrack tracking, annotations
-+-- camera_movement_estimator/
-�   +-- camera_movement_estimator.py        # Optical-flow camera motion estimation
-+-- view_transformer/
-�   +-- view_transformer.py                 # Perspective mapping to field coordinates
-+-- speed_and_distance_estimator/
-�   +-- speed_and_distance_estimator.py     # Speed/distance computation and overlays
-+-- team_assigner/
-�   +-- team_assigner.py                    # Team clustering from jersey color features
-+-- player_ball_assigner/
-�   +-- player_ball_assigner.py             # Ball possession assignment heuristic
-+-- utils/
-�   +-- video_utils.py                      # Video read/write helpers
-�   +-- bbox_utils.py                       # Geometric and distance helper functions
-+-- stubs/
-    +-- track_stubs.pkl                     # Cached object tracks
-    +-- camera_movement_stub.pkl            # Cached camera motion values
+├── main.py                          # End-to-end pipeline orchestrator
+├── yolo_inference.py                # Standalone YOLO inference check
+├── pyproject.toml · uv.lock         # uv project + locked dependencies
+├── trackers/
+│   └── tracker.py                   # Detection, ByteTrack tracking, annotations
+├── camera_movement_estimator/
+│   └── camera_movement_estimator.py # Optical-flow camera motion
+├── view_transformer/
+│   └── view_transformer.py          # Perspective mapping to pitch coordinates
+├── speed_and_distance_estimator/
+│   └── speed_and_distance_estimator.py
+├── team_assigner/
+│   └── team_assigner.py             # Jersey-colour team clustering
+├── player_ball_assigner/
+│   └── player_ball_assigner.py      # Possession heuristic
+└── utils/
+    ├── video_utils.py               # Lazy video reader + streaming writer
+    ├── stub_utils.py                # Video-fingerprinted stub cache
+    └── bbox_utils.py                # Geometry helpers
 ```
 
-## 6. Installation
-```bash
-git clone <your-repo-url>
-cd football_analysis_yolo
-python -m venv .venv
-# Windows
-.venv\Scripts\activate
-# Linux/macOS
-# source .venv/bin/activate
+## 🎬 Output
 
-pip install ultralytics supervision opencv-python numpy pandas scikit-learn
-```
+Every frame of `output_videos/output_video.avi` shows:
 
-Required local assets before execution:
-- Model weights at `models/best.pt`
-- Input video at `data/test.mp4`
-- Output directory `output_videos/` (create if missing)
+- 🟢 **Players**: ellipse in their team colour and a track-ID badge
+- 🟡 **Referees**: yellow ellipse
+- 🔺 **Ball**: green marker; a red marker sits over the player in possession
+- 📊 **Team ball control**: running possession percentage
+- 🎥 **Camera movement**: per-frame X/Y offset
+- ⚡ **Speed & distance**: km/h and cumulative metres under each player
 
-## 7. Usage
-Run the full analysis pipeline:
-```bash
-python main.py
-```
+## 🧠 Engineering insights
 
-Run YOLO-only quick check:
-```bash
-python yolo_inference.py
-```
+- **Separation of concerns**: YOLO handles perception; ByteTrack enforces temporal identity.
+- **Numerical robustness**: missing ball detections are interpolated before downstream analytics.
+- **Ego-motion removal**: optical-flow offsets keep camera pans out of player kinematics.
+- **Geometric normalisation**: homography converts pixels to metres for physically meaningful speed.
+- **Reproducible iteration**: fingerprinted caches make re-runs fast without ever drawing stale results.
 
-Implementation note:
-- `main.py` currently reads detection/tracking and camera-motion data from stubs (`read_from_stub=True`) for faster development loops.
-- Set these flags to `False` in `main.py` to recompute from raw video.
+<details>
+<summary><b>⚖️ Trade-offs & limitations</b></summary>
 
-## 8. Example Output
-Generated artifact:
-- `output_videos/output_video.avi`
+<br>
 
-Frame overlays include:
-- Player/referee/ball markers and IDs
-- Team-wise possession percentage
-- Camera movement `X/Y`
-- Player speed (`km/h`) and distance (`m`)
+- Colour-clustered team assignment is fast, but it is sensitive to lighting, similar kits and occlusion.
+- The perspective-transform corner points in `view_transformer.py` are hand-picked for one camera angle; speeds are approximate on other clips.
+- The nearest-foot possession heuristic is interpretable, but it can fail in crowded situations.
 
-Sample visualization:
+</details>
 
-![Pipeline output snapshot](image.png)
+## 🗺️ Roadmap
 
-## 9. Engineering Insights
-- Detection and tracking separation: YOLO handles perception; ByteTrack enforces temporal continuity.
-- Numerical robustness: missing ball detections are interpolated with Pandas before downstream analytics.
-- Camera-motion compensation: optical-flow offsets reduce ego-motion bias in movement statistics.
-- Geometric normalization: perspective mapping converts image coordinates into a field-referenced frame for physically meaningful distance/speed estimates.
-- Practical caching: pickle stubs reduce iteration time while debugging visualization and metric logic.
+- [ ] Learned possession model (proximity + motion context)
+- [ ] Automatic pitch keypoint detection → per-frame homography
+- [ ] Quantitative evaluation (tracking stability, possession accuracy, speed error)
+- [ ] Service-oriented packaging (API + job queue + artifact storage)
+- [ ] Downstream ML: event classification, tactical pattern mining
 
-Trade-offs:
-- Team assignment via color clustering is efficient but sensitive to lighting, jersey similarity, and occlusion.
-- Fixed frame-rate assumptions (`24 FPS`) simplify speed estimation but should be generalized for production.
-- Ball possession heuristic (nearest foot-point under threshold) is interpretable but can fail in dense crowding.
+## 🎓 About this project
 
-Performance/scalability considerations:
-- Detection is batched (`batch_size=20`) to improve inference throughput.
-- For larger workloads, this architecture can be extended to stream processing, asynchronous stages, and GPU-backed inference services.
+<details>
+<summary><b>Learning journey & AI/ML foundations</b></summary>
 
-## 10. Learning Journey & AI/ML Foundations
-### A. Computational & Mathematical Foundations
-My foundation is rooted in computational thinking that directly aligns with AI/ML engineering:
-- Mathematical modeling of dynamic systems.
-- Numerical methods and computational solving strategies.
-- Algorithmic problem-solving under real-world constraints.
-- Matrix/vector-style computation patterns used in NumPy-based pipelines.
-- Structured data transformation workflows conceptually aligned with Pandas-style processing.
+<br>
 
-### B. Current Academic Direction
-I am currently pursuing an M.Tech in AI/ML, with academic focus on:
-- Machine learning
-- Deep learning
-- Natural language processing (NLP)
-- AI systems engineering
+This project is part of my self-driven transition into AI/ML engineering. I'm currently pursuing an **M.Tech in AI/ML** (machine learning, deep learning, NLP, AI systems engineering), and I build implementation-heavy systems to connect theory with production-style execution.
 
-### C. Self-Driven Learning Narrative
-This project is part of my self-driven transition into AI/ML engineering. I intentionally build implementation-heavy systems to connect theory with production-style execution, especially across computer vision pipelines, backend-oriented data flow, and model-adjacent analytics.
+**Foundations:** mathematical modelling of dynamic systems, numerical methods, algorithmic problem-solving under real-world constraints, and vectorised computation, which form the backbone of modern ML systems.
 
-### D. Project to AI/ML Mapping
-How this project connects to AI/ML system design:
-- Tracking and trajectory extraction are foundational for behavior modeling and predictive analytics.
-- Perspective transformation and motion compensation reflect the same geometric/data normalization principles used in robust ML preprocessing.
-- Speed/distance derivation is feature engineering on spatiotemporal data.
-- Modular pipeline stages mirror ML system architecture patterns (ingestion, transformation, feature computation, output serving).
-- Stub-driven iteration mimics reproducible experimentation workflows used in model development.
+**How this project maps to AI/ML system design:**
+- Tracking and trajectory extraction → foundations for behaviour modelling and predictive analytics
+- Perspective transformation and motion compensation → the same normalisation principles used in robust ML preprocessing
+- Speed/distance derivation → feature engineering on spatiotemporal data
+- Modular pipeline stages → ingestion, transformation, feature computation and serving
+- Cached intermediate artifacts → reproducible experimentation workflows
 
-### E. Narrative Positioning
-This project is part of my transition into AI/ML, where I apply strong foundations in computational modeling and numerical methods to build scalable and intelligent systems.
-
-### F. Core Insight
-Even before specializing in AI/ML, I was working with computational algorithms, numerical methods, and system modeling, which form the backbone of modern machine learning systems.
-
-## 11. Challenges & Learnings
-- Camera movement confounds naive motion estimates; compensation is necessary before player-level kinematics.
+**Challenges & learnings:**
+- Camera movement confounds naive motion estimates; compensation must happen before player-level kinematics.
 - Ball detection is temporally sparse; interpolation is critical for stable possession analytics.
-- Broadcast-view geometry distorts distances; field-coordinate mapping improves metric interpretability.
-- Identity continuity and annotation quality require careful integration of detector and tracker outputs.
-- Engineering productivity improves significantly with cached intermediate artifacts during iterative development.
+- Broadcast geometry distorts distances; field-coordinate mapping makes metrics interpretable.
+- Cached results must be tied to their inputs. A stale cache produces annotations that look plausible and are completely wrong.
 
-## 12. Future Improvements
-- Replace heuristic possession with learned interaction models (ball-player proximity + motion context).
-- Add automatic homography calibration for different camera angles and stadium layouts.
-- Make frame-rate and camera-parameter handling fully dynamic.
-- Introduce quantitative evaluation metrics (tracking stability, possession accuracy, speed estimation error bounds).
-- Package as a service-oriented pipeline (API + job queue + artifact storage) for scalable processing.
-- Extend into downstream ML tasks: event classification, tactical pattern mining, and predictive play modeling.
+</details>
+
+<div align="center">
+
+---
+
+<sub>Built with ⚽ and 🧠 by <a href="https://github.com/TrishamBP">TrishamBP</a></sub>
+
+</div>

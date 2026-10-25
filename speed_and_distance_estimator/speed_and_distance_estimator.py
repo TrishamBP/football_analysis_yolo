@@ -4,9 +4,9 @@ sys.path.append('../')
 from utils import measure_distance ,get_foot_position
 
 class SpeedAndDistance_Estimator():
-    def __init__(self):
+    def __init__(self, frame_rate=24):
         self.frame_window=5
-        self.frame_rate=24
+        self.frame_rate=frame_rate
     
     def add_speed_and_distance_to_tracks(self,tracks):
         total_distance= {}
@@ -48,7 +48,6 @@ class SpeedAndDistance_Estimator():
                         tracks[object][frame_num_batch][track_id]['distance'] = total_distance[object][track_id]
     
     def draw_speed_and_distance(self,frames,tracks):
-        output_frames = []
         for frame_num, frame in enumerate(frames):
             for object, object_tracks in tracks.items():
                 if object == "ball" or object == "referees":
@@ -68,6 +67,4 @@ class SpeedAndDistance_Estimator():
                        position = tuple(map(int,position))
                        cv2.putText(frame, f"{speed:.2f} km/h",position,cv2.FONT_HERSHEY_SIMPLEX,0.5,(0,0,0),2)
                        cv2.putText(frame, f"{distance:.2f} m",(position[0],position[1]+20),cv2.FONT_HERSHEY_SIMPLEX,0.5,(0,0,0),2)
-            output_frames.append(frame)
-        
-        return output_frames
+            yield frame

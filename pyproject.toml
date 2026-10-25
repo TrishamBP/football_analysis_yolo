@@ -1,0 +1,24 @@
+[project]
+name = "football-analysis-yolo"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.5.4",
+    "opencv-python>=5.0.0.93",
+    "pandas>=3.1.0",
+    "scikit-learn>=1.9.1",
+    "supervision>=0.30,<0.31",
+    "torch>=2.14.1",
+    "torchvision>=0.29.1",
+    "ultralytics>=8.4.188",
+]
+
+# CUDA builds of PyTorch on Windows/Linux (PyPI only ships CPU wheels for Windows).
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu130", marker = "sys_platform != 'darwin'" }]
+torchvision = [{ index = "pytorch-cu130", marker = "sys_platform != 'darwin'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true

@@ -1,10 +1,8 @@
-import pickle
 import cv2
 import numpy as np
-import os
 import sys 
 sys.path.append('../')
-from utils import measure_distance,measure_xy_distance
+from utils import measure_distance,measure_xy_distance, read_stub, save_stub
 
 class CameraMovementEstimator():
     def __init__(self,frame):
@@ -42,9 +40,10 @@ class CameraMovementEstimator():
 
     def get_camera_movement(self,frames,read_from_stub=False, stub_path=None):
         # Read the stub 
-        if read_from_stub and stub_path is not None and os.path.exists(stub_path):
-            with open(stub_path,'rb') as f:
-                return pickle.load(f)
+        if read_from_stub:
+            camera_movement = read_stub(stub_path, frames)
+            if camera_movement is not None:
+                return camera_movement
 
         camera_movement = [[0,0]]*len(frames)
 
@@ -73,15 +72,11 @@ class CameraMovementEstimator():
 
             old_gray = frame_gray.copy()
         
-        if stub_path is not None:
-            with open(stub_path,'wb') as f:
-                pickle.dump(camera_movement,f)
+        save_stub(stub_path, frames, camera_movement)
 
         return camera_movement
     
     def draw_camera_movement(self,frames, camera_movement_per_frame):
-        output_frames=[]
-
         for frame_num, frame in enumerate(frames):
             frame= frame.copy()
 
@@ -94,6 +89,4 @@ class CameraMovementEstimator():
             frame = cv2.putText(frame,f"Camera Movement X: {x_movement:.2f}",(10,30), cv2.FONT_HERSHEY_SIMPLEX,1,(0,0,0),3)
             frame = cv2.putText(frame,f"Camera Movement Y: {y_movement:.2f}",(10,60), cv2.FONT_HERSHEY_SIMPLEX,1,(0,0,0),3)
 
-            output_frames.append(frame) 
-
-        return output_frames
+            yield frame

@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environment (uv)
+.venv/
+
+# Large local assets: input videos, model weights, rendered output
+data/
+models/
+output_videos/
+runs/
+*.pt
+*.mp4
+*.avi
+
+# Cached tracks/camera movement (regenerated per video)
+stubs/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
