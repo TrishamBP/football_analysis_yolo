@@ -20,7 +20,7 @@ Detection · Tracking · Team assignment · Camera-motion compensation · Speed 
   <img src="https://img.shields.io/badge/NVIDIA-CUDA%2013-76B900?style=for-the-badge&logo=nvidia&logoColor=white" alt="NVIDIA CUDA">
 </p>
 
-<img src="image.png" alt="Annotated output frame" width="90%">
+<img src="assets/demo.gif" alt="Pipeline output demo" width="90%">
 
 <sub>Annotated output: team-coloured player markers with track IDs, referee and ball markers, possession bar, camera movement, live speed & distance.</sub>
 
@@ -83,8 +83,7 @@ cd football_analysis_yolo
 uv sync
 
 # 2. Fetch model weights + a sample DFL Bundesliga clip
-uvx gdown -O models/best.pt "https://drive.google.com/uc?id=17PXFNlx-jI7VjVo_vQnB1sONjRyvoB-q"
-uvx gdown -O data/test.mp4  "https://drive.google.com/uc?id=1OG8K6wqUw9t7lp9ms1M48DxRhwTYciK-"
+uv run download_assets.py
 
 # 3. Run the pipeline
 uv run main.py
@@ -102,7 +101,7 @@ The annotated video is written to **`output_videos/output_video.avi`**.
 | Model weights | `models/best.pt` | YOLOv8x trained on ball / goalkeeper / player / referee, from [Roboflow sports](https://github.com/roboflow/sports) |
 | Input video | `data/test.mp4` | Clip from the [DFL Bundesliga Data Shootout](https://www.kaggle.com/competitions/dfl-bundesliga-data-shootout) dataset |
 
-Both are git-ignored (the weights are ~137 MB). Any model with the same four class names and any broadcast-angle clip will work.
+Both are git-ignored (the weights are ~137 MB) and downloaded by `download_assets.py`. Any model with the same four class names and any broadcast-angle clip will work.
 
 </details>
 
@@ -126,6 +125,7 @@ Detection/tracking and camera-motion results are cached in `stubs/<video>_*.pkl`
 football_analysis_yolo/
 ├── main.py                          # End-to-end pipeline orchestrator
 ├── yolo_inference.py                # Standalone YOLO inference check
+├── download_assets.py               # Fetches model weights + demo video
 ├── pyproject.toml · uv.lock         # uv project + locked dependencies
 ├── trackers/
 │   └── tracker.py                   # Detection, ByteTrack tracking, annotations
